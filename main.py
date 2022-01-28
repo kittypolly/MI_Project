@@ -473,6 +473,26 @@ class Main(QMainWindow):
         self.AmInfoForm.addRow(QLabel("         계좌번호"),self.bankAccountNumberLayout)
         self.AmInfoForm.addRow(self.AmInfoSaveBtnLayout)
 
+        ########################### 거래처 목록 삭제 & 조회 #################################
+        self.AccountListDeleteBtn = QPushButton("삭제")
+        self.AccountListDeleteBtn.clicked.connect(self.accountDeleteBtnClickedEvent)
+        self.AccountListSearchEdit = QWLineEdit()
+        self.AccountListSearchEdit.setMinimumWidth(300)
+        self.AccountListSearchBtn = QPushButton("조회")
+        self.AccountListSearchBtn.clicked.connect(self.AccountListSearchBtnEvent)
+
+        self.AccountListFunctionLayout = QHBoxLayout()
+        self.AccountListFunctionLayout.addWidget(self.AccountListDeleteBtn)
+        self.AccountListFunctionLayout.addStretch(30)
+        self.AccountListFunctionLayout.addWidget(QLabel("거래처코드"))
+        self.AccountListFunctionLayout.addWidget(self.AccountListSearchEdit)
+        self.AccountListFunctionLayout.addStretch(1)
+        self.AccountListFunctionLayout.addWidget(self.AccountListSearchBtn)
+
+
+
+
+
         ########################### 거래처 목록 Layouts ####################################
 
         self.AccountListTopLayout = QHBoxLayout()
@@ -504,8 +524,6 @@ class Main(QMainWindow):
         self.AccountListTable.horizontalHeader().setSectionResizeMode(11, QHeaderView.ResizeToContents)
         self.AccountListTable.horizontalHeader().setSectionResizeMode(12, QHeaderView.ResizeToContents)
 
-
-
         self.AccountListTableLayout = QVBoxLayout()
         self.AccountListTableLayout.addWidget(self.AccountListTable)
 
@@ -523,6 +541,7 @@ class Main(QMainWindow):
         self.amAccountTabLeftFrame.setStyleSheet("background-color:#F0F0F0")
 
         self.amAcoountTabRightLayout = QVBoxLayout()
+        self.amAcoountTabRightLayout.addLayout(self.AccountListFunctionLayout)
         self.amAcoountTabRightLayout.addLayout(self.AccountListTopLayout)
         self.amAcoountTabRightLayout.addLayout(self.AccountListTableLayout)
         self.amAccountTabRightFrame = QFrame()
@@ -540,7 +559,6 @@ class Main(QMainWindow):
         self.amMainLayout = QHBoxLayout()
         self.amMainLayout.addWidget(self.amtabs)
         self.AMTab.setLayout(self.amMainLayout)
-
 
 
     def addAccount(self):
@@ -565,17 +583,33 @@ class Main(QMainWindow):
         company_loc = self.companyAddress.text()
         bank_account = self.bankAccountNumber.text()
 
-        if(account_name != ""):
+        query = "SELECT * FROM 'accounts' WHERE account_name = ? OR account_code = ?"
+
+        if(account_name !="" and account_code !=""):
             try:
-                query ="INSERT INTO 'accounts' (account_name, account_code, trans_sort, company_sort, cor_number, ent_number, company_type, company_item, ceo_name, company_number, company_loc, bank_account) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
-                cur.execute(query, (account_name, account_code, trans_sort, company_sort, cor_number, ent_number, company_type, company_item, ceo_name, company_number, company_loc, bank_account))
-                con.commit()
-                QMessageBox.information(self,"정보","거래처가 추가 되었습니다.")
-                con.close()
+                query = "SELECT * FROM 'accounts' WHERE account_name = ? OR account_code = ?"
+                if (cur.execute(query, (account_name, account_code)).fetchall() == []):
+                    try:
+                        query = "INSERT INTO 'accounts' (account_name, account_code, trans_sort, company_sort, cor_number, ent_number, company_type, company_item, ceo_name, company_number, company_loc, bank_account) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) "
+                        cur.execute(query, (
+                        account_name, account_code, trans_sort, company_sort, cor_number, ent_number, company_type,
+                        company_item, ceo_name, company_number, company_loc, bank_account))
+                        con.commit()
+                        QMessageBox.information(self, "정보", "거래처가 추가 되었습니다.")
+                        con.close()
+
+                        #이거 즉시 적용이 안되나?
+                        #다 지우고 다 넣는걸 한 번 넣어보자.
+
+                    except:
+                        QMessageBox.information(self, "경고!", "거래처가 추가되지 않았습니다.")
+                else :
+                    QMessageBox.information(self, "경고!", "이미 같은 거래처명 혹은 거래처코드가 있습니다.")
             except:
-                QMessageBox.information(self,"경고!","거래처가 추가되지 않았습니다.")
+                QMessageBox.information(self, "경고!", "알 수없는 문제가 생겼습니다.")
         else:
-            QMessageBox.information(self, "경고!", "거래처명이 비어있습니다.")
+            QMessageBox.information(self, "경고!", "거래처명 혹은 거래처코드가 비어있습니다.")
+
 
     def displayProducts(self):
         self.AccountListTable.setFont(QFont("돋움",12))
@@ -589,12 +623,9 @@ class Main(QMainWindow):
             for column_number, data in enumerate(row_data):
                 self.AccountListTable.setItem(row_number,column_number,QTableWidgetItem(str(data)))
 
+            # This is Spare Code
             # self.AccountListTable.setItem(row_number,5,QTableWidgetItem(str(row_data[5])))
 
-
-
-
-            # Spare Code
 
         self.AccountListTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
@@ -625,6 +656,57 @@ class Main(QMainWindow):
             self.ssStealType1.setText("7.93")
         elif search_text in same_798:
             self.ssStealType1.setText("7.98")
+
+    def AccountListSearchBtnEvent(self):
+
+        search_text = self.AccountListSearchEdit.text()
+
+        try:
+            query = "SELECT * FROM 'accounts' WHERE account_code LIKE ?"
+            searched_data = cur.execute(query, ("%"+search_text+"%",)).fetchall()
+
+            for i in reversed(range(self.AccountListTable.rowCount())):
+                self.AccountListTable.removeRow(i)
+
+            for row_data in searched_data:
+                row_number = self.AccountListTable.rowCount()
+                self.AccountListTable.insertRow(row_number)
+                for column_number, data in enumerate(row_data):
+                    self.AccountListTable.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+        except:
+            pass
+
+
+    def accountDeleteBtnClickedEvent(self):
+
+        box = QMessageBox()
+        box.setIcon(QMessageBox.Question)
+        box.setWindowTitle('메세지')
+        box.setText('정말 삭제하시겠습니까?')
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        buttonY = box.button(QMessageBox.Yes)
+        buttonY.setText('네')
+        buttonN = box.button(QMessageBox.No)
+        buttonN.setText('아니요')
+        reply = box.exec_()
+
+        if reply == QMessageBox.Yes:
+            try:
+                row = self.AccountListTable.currentRow()
+                col = self.AccountListTable.currentColumn()
+
+                account = self.AccountListTable.item(row, 1).text()
+                code = self.AccountListTable.item(row, 2).text()
+
+                query = "DELETE FROM 'accounts' WHERE account_name = ? AND account_code = ?"
+                cur.execute(query, (account, code)).fetchone()
+                con.commit()
+                QMessageBox.information(self, "정보", "거래처가 삭제되었습니다.")
+                con.close()
+            except:
+                QMessageBox.information(self, "정보", "거래처가 삭제되지 않았습니다.")
+        else:
+            pass
 
 
 def main():
