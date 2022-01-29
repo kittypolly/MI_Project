@@ -144,9 +144,8 @@ class Main(QMainWindow):
         for account in OrderAccounts:
             self.ssOrderAccountSelectCList.append(account[1])
 
-
         self.ssOrderShapeList = [
-            self.tr('STS 판'), self.tr('SUS 코일'), self.tr('SUS 평철'), self.tr('SUS 앵글'), self.tr('SUS 환봉'),
+            self.tr('STS 판'), self.tr('SUS 평철'), self.tr('STS 코일'), self.tr('SUS 앵글'), self.tr('SUS 환봉'),
             self.tr('SUS 파이프'), self.tr('스크랩'), self.tr('프랜지'), self.tr('피팅'), self.tr('구조용부속'),
             self.tr('밸브'), self.tr('볼트/너트'), self.tr('가공비'), self.tr('사각파이프'), self.tr('파이프가공비'),
             self.tr('사각파이프가공비'), self.tr('환봉가공비'), self.tr('기타'), self.tr('원형절단품'), self.tr('사각봉'),
@@ -154,6 +153,7 @@ class Main(QMainWindow):
             self.tr('사급(모형)'), self.tr('모형절단품'), self.tr('절단비'), self.tr('밴딩비'), self.tr('절단,절곡'),
             self.tr('니플'), self.tr('용접봉'), self.tr('잔넬')
         ]
+
         self.ssOrderStealTypeList = [
             self.tr('304'),
             self.tr('304L'),
@@ -203,6 +203,19 @@ class Main(QMainWindow):
             self.tr('PVC부착')
         ]
 
+        self.ssCalMethodList = {
+            self.tr("매(枚)수 입력"),
+            self.tr("본(本)수 입력"),
+            self.tr("개(個)수 입력"),
+            self.tr("중량 입력"),
+            self.tr("매(枚)수 입력 후 중량계산"),
+            self.tr("본(本)수 입력 후 중량계산"),
+            self.tr("본(本)수 입력 후 Meter계산"),
+            self.tr("개(個)수 입력 후 중량계산"),
+            self.tr("Meter수 입력 후 중량계산")
+        }
+
+
         ########################## ss 수주 widgets ######################################
         self.ssOrderAccountSelectC = QWComboBox()
         self.ssOrderAccountSelectC.addItems(self.ssOrderAccountSelectCList)
@@ -224,6 +237,7 @@ class Main(QMainWindow):
         self.ssOrderWidth = QNumberEdit()
         self.ssOrderLength = QNumberEdit()
         self.ssCalMethod = QWComboBox()
+        self.ssCalMethod.addItems(self.ssCalMethodList)
         self.ssOrderQuantities = QHBoxLayout()
         self.ssQuantity0 = QNumberEdit()
         self.ssQuantity1 = QWComboBox()
@@ -261,8 +275,6 @@ class Main(QMainWindow):
         self.ssOrderForm.addRow(QLabel("        금액"), self.ssOrderPrice)
 
         self.ssOrderForm.addRow(QLabel("  납기일자"), self.ssOrderDateEdit)
-
-        ############################ 수주 Form 좌측 중단 ####################################
 
         self.ssOrderTextForm = QFormLayout()
         self.ssOrderTextEdit = QTextEdit()
@@ -484,12 +496,10 @@ class Main(QMainWindow):
         self.AccountListFunctionLayout = QHBoxLayout()
         self.AccountListFunctionLayout.addWidget(self.AccountListDeleteBtn)
         self.AccountListFunctionLayout.addStretch(30)
-        self.AccountListFunctionLayout.addWidget(QLabel("거래처코드"))
+        self.AccountListFunctionLayout.addWidget(QLabel("거래처명"))
         self.AccountListFunctionLayout.addWidget(self.AccountListSearchEdit)
         self.AccountListFunctionLayout.addStretch(1)
         self.AccountListFunctionLayout.addWidget(self.AccountListSearchBtn)
-
-
 
 
 
@@ -670,7 +680,7 @@ class Main(QMainWindow):
         search_text = self.AccountListSearchEdit.text()
 
         try:
-            query = "SELECT * FROM 'accounts' WHERE account_code LIKE ?"
+            query = "SELECT * FROM 'accounts' WHERE account_name LIKE ?"
             searched_data = cur.execute(query, ("%"+search_text+"%",)).fetchall()
 
             for i in reversed(range(self.AccountListTable.rowCount())):
@@ -710,7 +720,19 @@ class Main(QMainWindow):
                 cur.execute(query, (account, code)).fetchone()
                 con.commit()
                 QMessageBox.information(self, "정보", "거래처가 삭제되었습니다.")
-                con.close()
+
+                for i in reversed(range(self.AccountListTable.rowCount())):
+                    self.AccountListTable.removeRow(i)
+
+                query = cur.execute(
+                    "SELECT account_id, account_name, account_code, trans_sort, company_sort, cor_number, ent_number, company_type, company_item, ceo_name, company_number, company_loc, bank_account FROM accounts")
+                for row_data in query:
+                    row_number = self.AccountListTable.rowCount()
+                    self.AccountListTable.insertRow(row_number)
+                    for column_number, data in enumerate(row_data):
+                        self.AccountListTable.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+
+
             except:
                 QMessageBox.information(self, "정보", "거래처가 삭제되지 않았습니다.")
         else:
