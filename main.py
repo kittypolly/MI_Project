@@ -527,7 +527,7 @@ class Main(QMainWindow):
         self.AccountListTableLayout = QVBoxLayout()
         self.AccountListTableLayout.addWidget(self.AccountListTable)
 
-        self.displayProducts()
+        self.disPlayAccounts()
 
 
 
@@ -596,10 +596,6 @@ class Main(QMainWindow):
                         company_item, ceo_name, company_number, company_loc, bank_account))
                         con.commit()
                         QMessageBox.information(self, "정보", "거래처가 추가 되었습니다.")
-                        con.close()
-
-                        #이거 즉시 적용이 안되나?
-                        #다 지우고 다 넣는걸 한 번 넣어보자.
 
                     except:
                         QMessageBox.information(self, "경고!", "거래처가 추가되지 않았습니다.")
@@ -611,7 +607,20 @@ class Main(QMainWindow):
             QMessageBox.information(self, "경고!", "거래처명 혹은 거래처코드가 비어있습니다.")
 
 
-    def displayProducts(self):
+        for i in reversed(range(self.AccountListTable.rowCount())):
+            self.AccountListTable.removeRow(i)
+
+        query = cur.execute("SELECT account_id, account_name, account_code, trans_sort, company_sort, cor_number, ent_number, company_type, company_item, ceo_name, company_number, company_loc, bank_account FROM accounts")
+        for row_data in query:
+            row_number = self.AccountListTable.rowCount()
+            self.AccountListTable.insertRow(row_number)
+            for column_number, data in enumerate(row_data):
+                self.AccountListTable.setItem(row_number, column_number, QTableWidgetItem(str(data)))
+
+
+
+
+    def disPlayAccounts(self):
         self.AccountListTable.setFont(QFont("돋움",12))
         for i in reversed(range(self.AccountListTable.rowCount())):
             self.AccountListTable.removeRow(i)
@@ -625,7 +634,6 @@ class Main(QMainWindow):
 
             # This is Spare Code
             # self.AccountListTable.setItem(row_number,5,QTableWidgetItem(str(row_data[5])))
-
 
         self.AccountListTable.setEditTriggers(QAbstractItemView.NoEditTriggers)
 
